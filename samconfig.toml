@@ -1,0 +1,12 @@
+version = 0.1
+[dev.deploy.parameters]
+stack_name = "anyscale5-dev"
+resolve_s3 = true
+s3_prefix = "sam-app"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+rollback_on_failure = false
+parameter_overrides = [
+    "paramDomainName=lambda-or-alb5.cloud.okulist.net",
+    "paramHostedZoneId=Z00976901X2BWQNUQ03E3"
+]

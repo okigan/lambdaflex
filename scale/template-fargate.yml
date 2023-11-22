@@ -1,0 +1,282 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS Fargate infrastructure with VPC, subnets, and autoscaling for FastAPI application
+
+Parameters:
+  ContainerImageUri:
+    Type: String
+    Description: The URI of the container image for the Fargate task
+
+
+Resources:
+  # Network resources
+  MyVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: '10.0.0.0/16'
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+# public section
+  MyInternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+
+  GatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref MyInternetGateway
+
+  PublicSubnetOne:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: '10.0.1.0/24'
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+
+  PublicSubnetTwo:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: '10.0.2.0/24'
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties: 
+      VpcId: !Ref MyVPC
+
+  PublicRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn: GatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref MyInternetGateway
+
+  PublicSubnetOneRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnetOne
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetTwoRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnetTwo
+      RouteTableId: !Ref PublicRouteTable
+
+# private section
+  # # NAT Gateway EIP
+  # NATGatewayEIP:
+  #   Type: 'AWS::EC2::EIP'
+  #   DependsOn: GatewayAttachment
+  #   Properties:
+  #     Domain: vpc
+
+  # # NAT Gateway
+  # NATGateway:
+  #   Type: 'AWS::EC2::NatGateway'
+  #   Properties:
+  #     AllocationId: !GetAtt NATGatewayEIP.AllocationId
+  #     SubnetId: !Ref PublicSubnetOne
+
+  # PrivateSubnetOne:
+  #   Type: 'AWS::EC2::Subnet'
+  #   Properties:
+  #     VpcId: !Ref MyVPC
+  #     CidrBlock: '10.0.3.0/24'
+  #     AvailabilityZone: !Select [0, !GetAZs '']
+
+  # PrivateSubnetTwo:
+  #   Type: 'AWS::EC2::Subnet'
+  #   Properties:
+  #     VpcId: !Ref MyVPC
+  #     CidrBlock: '10.0.4.0/24'
+  #     AvailabilityZone: !Select [1, !GetAZs '']
+
+  # PrivateRouteTable:
+  #   Type: 'AWS::EC2::RouteTable'
+  #   Properties:
+  #     VpcId: !Ref MyVPC
+
+  # PrivateRoute:
+  #   Type: 'AWS::EC2::Route'
+  #   Properties:
+  #     RouteTableId: !Ref PrivateRouteTable
+  #     DestinationCidrBlock: '0.0.0.0/0'
+  #     NatGatewayId: !Ref NATGateway
+
+  # PrivateSubnetOneRouteTableAssociation:
+  #   Type: 'AWS::EC2::SubnetRouteTableAssociation'
+  #   Properties:
+  #     SubnetId: !Ref PrivateSubnetOne
+  #     RouteTableId: !Ref PrivateRouteTable
+
+  # PrivateSubnetTwoRouteTableAssociation:
+  #   Type: 'AWS::EC2::SubnetRouteTableAssociation'
+  #   Properties:
+  #     SubnetId: !Ref PrivateSubnetTwo
+  #     RouteTableId: !Ref PrivateRouteTable
+
+
+  # ECS resources
+  ECSCluster:
+    Type: 'AWS::ECS::Cluster'
+
+  # IAM Roles for ECS
+  ECSExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service: 'ecs-tasks.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+        - PolicyName: 'ECSTaskExecutionPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'ecr:GetAuthorizationToken'
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:BatchGetImage'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: '*'
+
+  ECSTaskRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service: 'ecs-tasks.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+        - PolicyName: 'ECSTaskRolePolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:PutItem'
+                Resource: 'arn:aws:dynamodb:your-region:your-account-id:table/YourDynamoDBTable'
+                # Add any additional permissions needed by the tasks
+
+  FargateTaskDefinition:
+    Type: 'AWS::ECS::TaskDefinition'
+    Properties:
+      Family: 'fastapitask'
+      Cpu: '256'
+      Memory: '512'
+      NetworkMode: 'awsvpc'
+      RequiresCompatibilities:
+        - 'FARGATE'
+      ExecutionRoleArn: !GetAtt ECSExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name: 'fastapi-container'
+          Image: !Ref ContainerImageUri
+          PortMappings:
+            - ContainerPort: 80
+        
+  # Security group for the Fargate tasks and ALB
+  FargateSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Security group for Fargate tasks'
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 44
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+
+  FargateService:
+    Type: 'AWS::ECS::Service'
+    Properties:
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref FargateTaskDefinition
+      LaunchType: 'FARGATE'
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !Ref PublicSubnetOne
+            - !Ref PublicSubnetTwo
+          SecurityGroups:
+            - !Ref FargateSecurityGroup
+      LoadBalancers:
+        - ContainerName: 'fastapi-container'
+          ContainerPort: 80
+          # LoadBalancerName: fastapi-alb
+          TargetGroupArn: !GetAtt ALBTargetGroup.TargetGroupArn
+    DependsOn:
+        - ALB
+        - ALBListener
+
+# ALB section
+
+  # Security Group for the ALB
+  ALBSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Access to the ALB'
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - CidrIp: '0.0.0.0/0'
+          IpProtocol: '-1'
+
+  # Load balancer resources
+  ALB:
+    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Properties:
+      Name: fastapi-alb
+      Scheme: 'internet-facing'
+      Subnets:
+        - !Ref PublicSubnetOne
+        - !Ref PublicSubnetTwo
+      SecurityGroups:
+        - !Ref FargateSecurityGroup
+      Type: 'application'
+    DependsOn:
+         - MyInternetGateway
+
+  ALBListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      DefaultActions:
+        - Type: 'forward'
+          TargetGroupArn: !GetAtt ALBTargetGroup.TargetGroupArn
+      LoadBalancerArn: !Ref ALB
+      Port: '80'
+      Protocol: 'HTTP'
+
+  ALBTargetGroup:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      Port: 80
+      Protocol: 'HTTP'
+      VpcId: !Ref MyVPC
+      Matcher:
+        HttpCode: '200-499'
+      TargetType: ip  # Specify the target type as 'ip'

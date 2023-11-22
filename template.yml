@@ -1,0 +1,257 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: "AWS::Serverless-2016-10-31"
+Description: Serverless application with API Gateway, Lambda, and scaling alarms.
+
+Parameters:
+    paramDomainName:
+        Type: String
+        Description: "The domain name for the ACM certificate (e.g., your-custom-domain-name.example.com)"
+
+    paramHostedZoneId:
+        Type: String
+        Description: "The Route 53 hosted zone ID for the domain name (e.g., Z1ABCDEF123456)"
+
+
+Globals:
+    Function:
+        Timeout: 10
+
+Resources:
+    MyLambdaFunction:
+        Type: "AWS::Serverless::Function"
+        Description: "Lambda function to scale up the concurrency limit (deploy trigger 1)"
+        Properties:
+            PackageType: Image
+            Events:
+                MyApi:
+                    Type: Api
+                    Properties:
+                        Path: /{proxy+}
+                        Method: ANY
+                        RestApiId: !Ref MyServerlessApi 
+        Metadata:
+            Dockerfile: Dockerfile
+            DockerContext: ./src
+            DockerTag: latest
+
+    HighConcurrencyAlarm:
+        Type: "AWS::CloudWatch::Alarm"
+        Properties:
+            MetricName: ConcurrentExecutions
+            Namespace: "AWS/Lambda"
+            Statistic: "Sum"
+            Period: 300
+            EvaluationPeriods: 1
+            Threshold: 100 # Set to the appropriate concurrency threshold
+            ComparisonOperator: "GreaterThanThreshold"
+            AlarmDescription: "Alarm when Lambda concurrency exceeds the threshold"
+            # AlarmActions:
+            #     - !GetAtt ScaleUpLambdaFunction.Arn
+            Dimensions:
+                - Name: FunctionName
+                  Value: MyLambdaFunction # Correct reference to the function's name
+            TreatMissingData: "notBreaching" # Choose an appropriate option
+
+    ScaleUpLambdaFunction:
+        Type: "AWS::Serverless::Function"
+        Description: "Lambda function to scale up the concurrency limit (deploy trigger 2)"
+        Properties:
+            Timeout: 900
+            CodeUri: scale/
+            Handler: scale.lambda_scale_up_handler
+            Runtime: python3.8
+            Environment:
+                Variables:
+                    LAMBDA_FUNCTION_NAME: !GetAtt MyLambdaFunction.Arn
+            Policies:
+                - Version: "2012-10-17"
+                  Statement:
+                      - Effect: Allow
+                        Action:
+                            # - cloudformation:CreateStack
+                            # - cloudformation:DeleteStack
+                            # - cloudformation:DescribeStacks
+                            # - cloudformation:UpdateStack
+                            # - ec2:CreateInternetGateway
+                            # - ec2:CreateVpc
+                            # - ec2:DescribeInternetGateways
+                            # - ec2:DescribeVpcs
+                            # - ec2:ModifyVpcAttribute
+                            # - ecs:CreateCluster
+                            # - ecs:DeleteCluster
+                            # - ecs:DescribeClusters
+                            # - ec2:DeleteInternetGateway 
+                            # - ec2:DeleteVpc
+                            # - iam:CreateRole
+                            # - iam:DeleteRole
+                            # - iam:DeleteRolePolicy
+                            # - iam:PutRolePolicy 
+                            # - lambda:GetAlias
+                            # - lambda:GetFunction 
+                            # - lambda:ListVersionsByFunction
+                            # - ec2:CreateSecurityGroup
+                            # - ec2:DescribeAvailabilityZones
+                            # - elasticloadbalancing:DescribeTargetGroup
+                            - cloudformation:*
+                            - ec2:*
+                            - ecs:*
+                            - iam:* 
+                            - lambda:*
+                            - elasticloadbalancing:*
+                        Resource: "*"
+
+            # Events:
+            #     HighConcurrencyTrigger:
+            #         Type: CloudWatchEvent
+            #         Properties:
+            #             Pattern:
+            #                 source:
+            #                     - "aws.cloudwatch"
+            #                 detail-type:
+            #                     - "CloudWatch Alarm State Change"
+            #                 detail:
+            #                     state:
+            #                         value:
+            #                             - "ALARM"
+            #                     alarmName:
+            #                         - Ref: HighConcurrencyAlarm
+
+    # LowConcurrencyAlarm:
+    #     Type: "AWS::CloudWatch::Alarm"
+    #     Properties:
+    #         MetricName: ConcurrentExecutions
+    #         Namespace: "AWS/Lambda"
+    #         Statistic: "Sum"
+    #         Period: 60
+    #         EvaluationPeriods: 1
+    #         Threshold: 20 # Set to the appropriate lower concurrency threshold
+    #         ComparisonOperator: "LessThanThreshold"
+    #         AlarmDescription: "Alarm when Lambda concurrency drops below the threshold"
+    #         AlarmActions:
+    #             - !GetAtt ScaleDownLambdaFunction.Arn
+    #         Dimensions:
+    #             - Name: FunctionName
+    #               Value: !Ref MyLambdaFunction
+
+    ScaleDownLambdaFunction:
+        Type: "AWS::Serverless::Function"
+        Properties:
+            CodeUri: scale/
+            Timeout: 900
+            Handler: scale.lambda_scale_down_handler
+            Runtime: python3.8
+            Policies: # Add necessary permissions for the Scale Down function
+                - Version: "2012-10-17"
+                  Statement:
+                      - Effect: Allow
+                        Action:
+                            - cloudformation:CreateStack
+                            - cloudformation:DescribeStacks
+                            - cloudformation:UpdateStack
+                            - cloudformation:DeleteStack
+                        Resource: "*"
+            # Events:
+            #     LowConcurrencyTrigger:
+            #         Type: CloudWatchEvent
+            #         Properties:
+            #             Pattern:
+            #                 source:
+            #                     - "aws.cloudwatch"
+            #                 detail-type:
+            #                     - "CloudWatch Alarm State Change"
+            #                 detail:
+            #                     state:
+            #                         value:
+            #                             - "ALARM"
+            #                     alarmName:
+            #                         - Ref: LowConcurrencyAlarm
+
+    MyServerlessApi:
+        Type: 'AWS::Serverless::Api'
+        Properties:
+            # Domain:
+            #     DomainName: !Ref paramDomainName
+            #     CertificateArn: !Ref AcmCertificate
+            #     # Route53:
+            #     #     HostedZoneId: !Ref paramHostedZoneId
+            #     #     SetIdentifier: rd_01
+            EndpointConfiguration: REGIONAL
+            StageName: prod
+
+
+
+    AcmCertificate:
+        Type: "AWS::CertificateManager::Certificate"
+        Properties:
+            DomainName: !Ref paramDomainName
+            ValidationMethod: DNS
+
+
+    MyRoute53RecordSet:
+        Type: AWS::Route53::RecordSet
+        Properties:
+            Name: !Ref paramDomainName
+            HostedZoneId: !Ref paramHostedZoneId
+            Type: A
+            SetIdentifier: rd_01
+            Weight: 200
+            AliasTarget: 
+                DNSName: !GetAtt DeliveryApiDomainName.RegionalDomainName
+                HostedZoneId: !GetAtt DeliveryApiDomainName.RegionalHostedZoneId
+                EvaluateTargetHealth: false
+                # # Use the fixed Hosted Zone ID for API Gateway regional endpoints provided by AWS for your specific region.
+                # # For example, this is the Hosted Zone ID for API Gateway in us-east-1 region.
+                # HostedZoneId: Z1UJRXOUMOOFQ8
+                # # The regional domain name attribute you need to use here is DistributionDomainName due to the API Gateway being created as an AWS::Serverless::Api.
+                # DNSName: !Sub ${MyServerlessApi.RootResourceId}.execute-api.${AWS::Region}.amazonaws.com
+
+
+    # DeliveryApi:
+    #     Type: AWS::ApiGateway::RestApi
+    #     Properties:
+    #         EndpointConfiguration:
+    #             Types:
+    #                 - REGIONAL
+
+    DeliveryApiDomainName:
+        Type: 'AWS::ApiGateway::DomainName'
+        Properties:
+            RegionalCertificateArn: !Ref AcmCertificate
+            DomainName: !Ref paramDomainName
+            EndpointConfiguration:
+                Types:
+                    - REGIONAL
+
+
+    DeliveryApiBasePathMapping:
+        Type: 'AWS::ApiGateway::BasePathMapping'
+        Properties:
+            DomainName: !Ref DeliveryApiDomainName
+            RestApiId: !Ref MyServerlessApi
+            Stage: 'prod'
+
+    # DeliveryApiRoute53RecordSetGroup:
+    #     Type: AWS::Route53::RecordSetGroup
+    #     Properties:
+    #         HostedZoneId: !Ref paramHostedZoneId
+    #         RecordSets:
+    #             - Name: !Ref paramDomainName # Your chosen subdomain
+    #               Type: A
+    #               AliasTarget:
+    #                 HostedZoneId: !GetAtt DeliveryApiDomainName.DistributionHostedZoneId
+    #                 DNSName: !GetAtt DeliveryApiDomainName.DistributionDomainName
+    #             - Name: !Ref paramDomainName
+    #               Type: AAAA
+    #               AliasTarget:
+    #                     HostedZoneId: !GetAtt DeliveryApiDomainName.DistributionHostedZoneId
+    #                     DNSName: !GetAtt DeliveryApiDomainName.DistributionDomainName
+
+# Outputs:
+# WebEndpoint:
+#     Description: "API Gateway endpoint URL for Prod stage"
+#     Value: !Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+
+# MyLambdaFunctionConcurrentExecutionMetric:
+#     Description: "The CloudWatch metric for concurrent Lambda executions"
+#     Value: !GetAtt HighConcurrencyAlarm.MetricName
+

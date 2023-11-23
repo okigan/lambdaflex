@@ -10,7 +10,9 @@ logger.setLevel(logging.INFO)
 logger.info('Loading function........')
 
 
-app = FastAPI()
+app = FastAPI(
+    root_path='/prod' if 'LAMBDA_TASK_ROOT' in os.environ else '/' 
+)
 
 handler = Mangum(app)
 

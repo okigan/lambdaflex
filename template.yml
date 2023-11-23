@@ -599,7 +599,7 @@ Resources:
         Condition: condWithFargate
         Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
         Properties:
-            Name: fastapi-alb
+            Name: anyscale0-alb
             Scheme: 'internet-facing'
             Subnets:
                 - !Ref PublicSubnetOne

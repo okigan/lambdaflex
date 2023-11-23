@@ -1,13 +1,13 @@
 version = 0.1
 [dev.deploy.parameters]
-stack_name = "anyscale8-dev"
+stack_name = "anyscale0-dev"
 resolve_s3 = true
 s3_prefix = "sam-app"
 region = "us-east-1"
 capabilities = "CAPABILITY_IAM"
 rollback_on_failure = false
 parameter_overrides = [
-    "paramDomainName=lambda-or-anyscale8.cloud.okulist.net",
+    "paramDomainName=lambda-or-anyscale0.cloud.okulist.net",
     "paramHostedZoneId=Z00976901X2BWQNUQ03E3",
     "paramWithFargate=yes",
 ]

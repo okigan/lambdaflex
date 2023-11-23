@@ -2,10 +2,17 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS Fargate infrastructure with VPC, subnets, and autoscaling for FastAPI application
 
 Parameters:
-  ContainerImageUri:
-    Type: String
-    Description: The URI of the container image for the Fargate task
+    paramDomainName:
+        Type: String
+        Description: "The domain name for the ACM certificate (e.g., your-custom-domain-name.example.com)"
 
+    paramHostedZoneId:
+        Type: String
+        Description: "The Route 53 hosted zone ID for the domain name (e.g., Z1ABCDEF123456)"
+
+    ContainerImageUri:
+        Type: String
+        Description: The URI of the container image for the Fargate task
 
 Resources:
   # Network resources
@@ -188,11 +195,18 @@ Resources:
       ExecutionRoleArn: !GetAtt ECSExecutionRole.Arn
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
-        - Name: 'fastapi-container'
+        - Name: 'fastapic1'
           Image: !Ref ContainerImageUri
           PortMappings:
-            - ContainerPort: 80
-        
+            - ContainerPort: 8080
+          LogConfiguration:
+              LogDriver: awslogs
+              Options:
+                  awslogs-group: /ecs/MyLogGroup
+                  awslogs-region: us-east-1  # adjust the region if needed
+                  awslogs-stream-prefix: MyContainer
+
+
   # Security group for the Fargate tasks and ALB
   FargateSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
@@ -205,7 +219,7 @@ Resources:
           ToPort: 80
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: 44
+          FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
 
@@ -226,10 +240,10 @@ Resources:
           SecurityGroups:
             - !Ref FargateSecurityGroup
       LoadBalancers:
-        - ContainerName: 'fastapi-container'
-          ContainerPort: 80
+        - ContainerName: 'fastapic1'
+          ContainerPort: 8080
           # LoadBalancerName: fastapi-alb
-          TargetGroupArn: !GetAtt ALBTargetGroup.TargetGroupArn
+          TargetGroupArn: !GetAtt ALBTargetGroup2.TargetGroupArn
     DependsOn:
         - ALB
         - ALBListener
@@ -266,17 +280,30 @@ Resources:
     Properties:
       DefaultActions:
         - Type: 'forward'
-          TargetGroupArn: !GetAtt ALBTargetGroup.TargetGroupArn
+          TargetGroupArn: !GetAtt ALBTargetGroup2.TargetGroupArn
       LoadBalancerArn: !Ref ALB
       Port: '80'
       Protocol: 'HTTP'
 
-  ALBTargetGroup:
+  ALBTargetGroup2:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
     Properties:
-      Port: 80
+      Port: 8080
       Protocol: 'HTTP'
       VpcId: !Ref MyVPC
       Matcher:
         HttpCode: '200-499'
-      TargetType: ip  # Specify the target type as 'ip'
+      TargetType: ip
+
+  MyRoute53RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Name: !Ref paramDomainName
+      HostedZoneId: !Ref paramHostedZoneId
+      Type: A
+      SetIdentifier: rd_02
+      Weight: 200
+      AliasTarget: 
+          DNSName: !GetAtt ALB.DNSName
+          HostedZoneId: !GetAtt ALB.CanonicalHostedZoneID
+          EvaluateTargetHealth: false

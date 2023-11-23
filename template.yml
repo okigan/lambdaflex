@@ -11,6 +11,15 @@ Parameters:
         Type: String
         Description: "The Route 53 hosted zone ID for the domain name (e.g., Z1ABCDEF123456)"
 
+    paramWithFargate:
+        Type: String
+        Description: "The Route 53 hosted zone ID for the domain name (e.g., Z1ABCDEF123456)"
+        Default: no
+        # AllowedValues:
+        #     - yes
+        #     - no
+Conditions:
+    condWithFargate:  !Equals [ !Ref paramWithFargate, 'yes' ]
 
 Globals:
     Function:
@@ -194,7 +203,7 @@ Resources:
             HostedZoneId: !Ref paramHostedZoneId
             Type: A
             SetIdentifier: rd_01
-            Weight: 200
+            Weight: 1
             AliasTarget: 
                 DNSName: !GetAtt DeliveryApiDomainName.RegionalDomainName
                 HostedZoneId: !GetAtt DeliveryApiDomainName.RegionalHostedZoneId
@@ -228,7 +237,7 @@ Resources:
         Properties:
             DomainName: !Ref DeliveryApiDomainName
             RestApiId: !Ref MyServerlessApi
-            Stage: 'prod'
+            Stage: !Ref MyServerlessApi.Stage
 
     # DeliveryApiRoute53RecordSetGroup:
     #     Type: AWS::Route53::RecordSetGroup
@@ -245,6 +254,398 @@ Resources:
     #               AliasTarget:
     #                     HostedZoneId: !GetAtt DeliveryApiDomainName.DistributionHostedZoneId
     #                     DNSName: !GetAtt DeliveryApiDomainName.DistributionDomainName
+
+
+
+
+    # Network resources
+    MyVPC:
+        Condition: condWithFargate
+        Type: 'AWS::EC2::VPC'
+        Properties:
+            CidrBlock: '10.0.0.0/16'
+            EnableDnsSupport: true
+            EnableDnsHostnames: true
+
+    # public section
+    MyInternetGateway:
+        Condition: condWithFargate
+        Type: 'AWS::EC2::InternetGateway'
+
+    GatewayAttachment:
+        Condition: condWithFargate
+        Type: 'AWS::EC2::VPCGatewayAttachment'
+        Properties:
+            VpcId: !Ref MyVPC
+            InternetGatewayId: !Ref MyInternetGateway
+
+    PublicSubnetOne:
+        Condition: condWithFargate
+        Type: 'AWS::EC2::Subnet'
+        Properties:
+            VpcId: !Ref MyVPC
+            CidrBlock: '10.0.1.0/24'
+            AvailabilityZone: !Select [0, !GetAZs '']
+            MapPublicIpOnLaunch: true
+
+    PublicSubnetTwo:
+        Condition: condWithFargate
+        Type: 'AWS::EC2::Subnet'
+        Properties:
+            VpcId: !Ref MyVPC
+            CidrBlock: '10.0.2.0/24'
+            AvailabilityZone: !Select [1, !GetAZs '']
+            MapPublicIpOnLaunch: true
+
+    PublicRouteTable:
+        Condition: condWithFargate
+        Type: 'AWS::EC2::RouteTable'
+        Properties: 
+            VpcId: !Ref MyVPC
+
+    PublicRoute:
+        Condition: condWithFargate
+        Type: 'AWS::EC2::Route'
+        DependsOn: GatewayAttachment
+        Properties:
+            RouteTableId: !Ref PublicRouteTable
+            DestinationCidrBlock: '0.0.0.0/0'
+            GatewayId: !Ref MyInternetGateway
+
+    PublicSubnetOneRouteTableAssociation:
+        Condition: condWithFargate
+        Type: 'AWS::EC2::SubnetRouteTableAssociation'
+        Properties:
+            SubnetId: !Ref PublicSubnetOne
+            RouteTableId: !Ref PublicRouteTable
+
+    PublicSubnetTwoRouteTableAssociation:
+        Condition: condWithFargate
+        Type: 'AWS::EC2::SubnetRouteTableAssociation'
+        Properties:
+            SubnetId: !Ref PublicSubnetTwo
+            RouteTableId: !Ref PublicRouteTable
+
+    # private section
+    # # NAT Gateway EIP
+    # NATGatewayEIP:
+    #   Type: 'AWS::EC2::EIP'
+    #   DependsOn: GatewayAttachment
+    #   Properties:
+    #     Domain: vpc
+
+    # # NAT Gateway
+    # NATGateway:
+    #   Type: 'AWS::EC2::NatGateway'
+    #   Properties:
+    #     AllocationId: !GetAtt NATGatewayEIP.AllocationId
+    #     SubnetId: !Ref PublicSubnetOne
+
+    # PrivateSubnetOne:
+    #   Type: 'AWS::EC2::Subnet'
+    #   Properties:
+    #     VpcId: !Ref MyVPC
+    #     CidrBlock: '10.0.3.0/24'
+    #     AvailabilityZone: !Select [0, !GetAZs '']
+
+    # PrivateSubnetTwo:
+    #   Type: 'AWS::EC2::Subnet'
+    #   Properties:
+    #     VpcId: !Ref MyVPC
+    #     CidrBlock: '10.0.4.0/24'
+    #     AvailabilityZone: !Select [1, !GetAZs '']
+
+    # PrivateRouteTable:
+    #   Type: 'AWS::EC2::RouteTable'
+    #   Properties:
+    #     VpcId: !Ref MyVPC
+
+    # PrivateRoute:
+    #   Type: 'AWS::EC2::Route'
+    #   Properties:
+    #     RouteTableId: !Ref PrivateRouteTable
+    #     DestinationCidrBlock: '0.0.0.0/0'
+    #     NatGatewayId: !Ref NATGateway
+
+    # PrivateSubnetOneRouteTableAssociation:
+    #   Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    #   Properties:
+    #     SubnetId: !Ref PrivateSubnetOne
+    #     RouteTableId: !Ref PrivateRouteTable
+
+    # PrivateSubnetTwoRouteTableAssociation:
+    #   Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    #   Properties:
+    #     SubnetId: !Ref PrivateSubnetTwo
+    #     RouteTableId: !Ref PrivateRouteTable
+
+
+    # ECS resources
+    ECSCluster:
+        Condition: condWithFargate
+        Type: 'AWS::ECS::Cluster'
+
+    # IAM Roles for ECS
+    ECSExecutionRole:
+        Condition: condWithFargate
+        Type: 'AWS::IAM::Role'
+        Properties:
+            AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                    - Effect: 'Allow'
+                      Principal:
+                        Service: 'ecs-tasks.amazonaws.com'
+                      Action: 'sts:AssumeRole'
+            Path: '/'
+            Policies:
+                - PolicyName: 'ECSTaskExecutionPolicy'
+                  PolicyDocument:
+                    Version: '2012-10-17'
+                    Statement:
+                    - Effect: 'Allow'
+                      Action:
+                        - 'ecr:GetAuthorizationToken'
+                        - 'ecr:BatchCheckLayerAvailability'
+                        - 'ecr:GetDownloadUrlForLayer'
+                        - 'ecr:BatchGetImage'
+                        - 'logs:CreateLogStream'
+                        - 'logs:PutLogEvents'
+                      Resource: '*'
+
+    ECSTaskRole:
+        Condition: condWithFargate
+        Type: 'AWS::IAM::Role'
+        Properties:
+            AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                    - Effect: 'Allow'
+                      Principal:
+                        Service: 'ecs-tasks.amazonaws.com'
+                      Action: 'sts:AssumeRole'
+            Path: '/'
+            Policies:
+                - PolicyName: 'ECSTaskRolePolicy'
+                  PolicyDocument:
+                    Version: '2012-10-17'
+                    Statement:
+                        - Effect: 'Allow'
+                          Action:
+                            - 'dynamodb:GetItem'
+                            - 'dynamodb:UpdateItem'
+                            - 'dynamodb:PutItem'
+                          Resource: 'arn:aws:dynamodb:your-region:your-account-id:table/YourDynamoDBTable'
+                            # Add any additional permissions needed by the tasks
+
+    LambdaExecutionRole:
+        Type: AWS::IAM::Role
+        Properties:
+            AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                - Effect: Allow
+                  Principal:
+                    Service: lambda.amazonaws.com
+                  Action: sts:AssumeRole
+            Policies:
+                - PolicyName: LambdaExecutionPolicy1
+                  PolicyDocument:
+                    Version: '2012-10-17'
+                    Statement:
+                        - Effect: Allow
+                          Action: 'logs:*'
+                          Resource: 'arn:aws:logs:*:*:*'
+                - PolicyName: LambdaExecutionPolicy2
+                  PolicyDocument:
+                    Version: '2012-10-17'
+                    Statement:
+                        - Effect: Allow
+                          Action: 'lambda:*'
+                          Resource: '*'
+
+    ImageUriExtractorLambda:
+        Type: AWS::Lambda::Function
+        Properties:
+            Code:
+                ZipFile: |
+                    import boto3
+                    import cfnresponse
+                    import json
+
+                    def lambda_handler_inner(event, context):
+                        try:
+                            lambda_client = boto3.client('lambda')
+                            function_name = event['ResourceProperties']['LambdaArn']
+                            
+                            response = lambda_client.get_function(FunctionName=function_name)
+                            image_uri = response['Code']['ImageUri']
+                            responseData = {'ImageUri': image_uri}
+                            
+                            cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+                        except Exception as e:
+                            errorMessage = str(e)
+                            cfnresponse.send(event, context, cfnresponse.FAILED, {}, errorMessage)
+
+                    def lambda_handler(event, context):
+                        print("event: " + json.dumps(event))
+                        print("context: " + str(context))
+
+                        result = lambda_handler_inner(event, context)
+
+                        print("result: " + str(result))
+
+                        return result
+
+            Handler: 'index.lambda_handler'
+            Role: !GetAtt LambdaExecutionRole.Arn
+            Runtime: python3.8
+            Timeout: 30
+
+    LambdaImageUriCustomResource:
+        Type: "Custom::LambdaImageUriExtractor"
+        Properties: 
+            ServiceToken: !GetAtt ImageUriExtractorLambda.Arn
+            LambdaArn: !Ref MyLambdaFunction
+
+    FargateTaskDefinition:
+        Condition: condWithFargate
+        Type: 'AWS::ECS::TaskDefinition'
+        Properties:
+            Family: 'fastapitask'
+            Cpu: '256'
+            Memory: '512'
+            NetworkMode: 'awsvpc'
+            RequiresCompatibilities:
+                - 'FARGATE'
+            ExecutionRoleArn: !GetAtt ECSExecutionRole.Arn
+            TaskRoleArn: !GetAtt ECSTaskRole.Arn
+            ContainerDefinitions:
+                - Name: 'fastapic1'
+                  Image: !GetAtt LambdaImageUriCustomResource.ImageUri
+                  PortMappings:
+                    - ContainerPort: 8080
+                      HostPort: 8080
+                  LogConfiguration:
+                      LogDriver: awslogs
+                      Options:
+                          awslogs-group: /ecs/MyLogGroup
+                          awslogs-region: us-east-1  # adjust the region if needed
+                          awslogs-stream-prefix: MyContainer
+
+
+    # Security group for the Fargate tasks and ALB
+    FargateSecurityGroup:
+        Condition: condWithFargate
+        Type: 'AWS::EC2::SecurityGroup'
+        Properties:
+            GroupDescription: 'Security group for Fargate tasks'
+            VpcId: !Ref MyVPC
+            SecurityGroupIngress:
+                - IpProtocol: tcp
+                  FromPort: 80
+                  ToPort: 80
+                  CidrIp: 0.0.0.0/0
+                - IpProtocol: tcp
+                  FromPort: 8080
+                  ToPort: 8080
+                  CidrIp: 0.0.0.0/0
+                - IpProtocol: tcp
+                  FromPort: 443
+                  ToPort: 443
+                  CidrIp: 0.0.0.0/0
+
+
+    FargateService:
+        Condition: condWithFargate
+        Type: 'AWS::ECS::Service'
+        Properties:
+            Cluster: !Ref ECSCluster
+            TaskDefinition: !Ref FargateTaskDefinition
+            LaunchType: 'FARGATE'
+            DesiredCount: 1
+            NetworkConfiguration:
+                AwsvpcConfiguration:
+                    AssignPublicIp: ENABLED
+                    Subnets:
+                        - !Ref PublicSubnetOne
+                        - !Ref PublicSubnetTwo
+                    SecurityGroups:
+                        - !Ref FargateSecurityGroup
+            LoadBalancers:
+                - ContainerName: 'fastapic1'
+                  ContainerPort: 8080
+                # LoadBalancerName: fastapi-alb
+                  TargetGroupArn: !GetAtt ALBTargetGroup2.TargetGroupArn
+        DependsOn:
+            - ALB
+            - ALBListener
+
+    # ALB section
+
+    # Security Group for the ALB
+    ALBSecurityGroup:
+        Condition: condWithFargate
+        Type: 'AWS::EC2::SecurityGroup'
+        Properties:
+            GroupDescription: 'Access to the ALB'
+            VpcId: !Ref MyVPC
+            SecurityGroupIngress:
+                - CidrIp: '0.0.0.0/0'
+                  IpProtocol: '-1'
+
+    # Load balancer resources
+    ALB:
+        Condition: condWithFargate
+        Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+        Properties:
+            Name: fastapi-alb
+            Scheme: 'internet-facing'
+            Subnets:
+                - !Ref PublicSubnetOne
+                - !Ref PublicSubnetTwo
+            SecurityGroups:
+                - !Ref FargateSecurityGroup
+            Type: 'application'
+        DependsOn:
+            - MyInternetGateway
+
+    ALBListener:
+        Condition: condWithFargate
+        Type: 'AWS::ElasticLoadBalancingV2::Listener'
+        Properties:
+            DefaultActions:
+                - Type: 'forward'
+                  TargetGroupArn: !GetAtt ALBTargetGroup2.TargetGroupArn
+            LoadBalancerArn: !Ref ALB
+            Port: '80'
+            Protocol: 'HTTP'
+
+    ALBTargetGroup2:
+        Condition: condWithFargate
+        Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+        Properties:
+            Port: 8080
+            Protocol: 'HTTP'
+            VpcId: !Ref MyVPC
+            Matcher:
+                HttpCode: '200-499'
+            TargetType: ip
+
+    MyRoute53RecordSet2:
+        Condition: condWithFargate
+        Type: AWS::Route53::RecordSet
+        Properties:
+            Name: !Ref paramDomainName
+            HostedZoneId: !Ref paramHostedZoneId
+            Type: A
+            SetIdentifier: rd_02
+            Weight: 200
+            AliasTarget: 
+                DNSName: !GetAtt ALB.DNSName
+                HostedZoneId: !GetAtt ALB.CanonicalHostedZoneID
+                EvaluateTargetHealth: false
+
 
 # Outputs:
 # WebEndpoint:

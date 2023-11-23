@@ -2,21 +2,23 @@
 
 # Get ImageUri from Lambda function with the following name
 REGION="us-east-1"
-LAMBDA_FUNCTION_NAME="anyscale-dev-MyLambdaFunction-yrsZdUsDY93I"
+LAMBDA_FUNCTION_NAME="anyscale6-dev-MyLambdaFunction-GtxUxkwEQDd9"
 
 response=$(aws lambda get-function --region ${REGION} --function-name $LAMBDA_FUNCTION_NAME)
 IMAGE_URI=$(echo $response | jq -r '.Code.ImageUri')
 echo "Image URI: $IMAGE_URI"
 
-STACK_NAME="sss2"
+STACK_NAME="sss9"
 TEMPLATE_FILE="template-fargate.yml"
 
-aws cloudformation update-stack \
+aws cloudformation create-stack \
   --template-body file://$TEMPLATE_FILE \
   --stack-name $STACK_NAME \
   --region $REGION \
   --capabilities CAPABILITY_IAM \
-  --parameters ParameterKey=ContainerImageUri,ParameterValue=$IMAGE_URI \
+  --parameters "ParameterKey=ContainerImageUri,ParameterValue=$IMAGE_URI" \
+               "ParameterKey=paramDomainName,ParameterValue=lambda-or-alb6.cloud.okulist.net" \
+               "ParameterKey=paramHostedZoneId,ParameterValue=Z00976901X2BWQNUQ03E3" \
   --no-cli-pager \
   --disable-rollback
 

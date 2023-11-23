@@ -9,8 +9,7 @@ RUN python -m pip install -r requirements.txt
 COPY app.py .
 COPY entrypoint.sh .
 
-# Inform Docker that the container is listening on port 80
-EXPOSE 80
+EXPOSE 8080
 
-# Set the CMD to your handler location
 ENTRYPOINT ["/var/task/entrypoint.sh"]
+# CMD [ "app.handler" ]

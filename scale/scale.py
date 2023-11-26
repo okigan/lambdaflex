@@ -57,11 +57,11 @@ def scale_up_down(paramWithFargate):
     )
 
 
-    monitor(STACK_NAME, 'CREATE_COMPLETE')
+    # monitor(STACK_NAME, 'CREATE_COMPLETE')
     return {'message': 'Fargate stack deployment initiated'}
 
 def lambda_scale_up_handler(event, context):
-    return scale_up_down(True)
+    return scale_up_down('true')
 
 def lambda_scale_down_handler(event, context):
-    return scale_up_down(False)
+    return scale_up_down('false')

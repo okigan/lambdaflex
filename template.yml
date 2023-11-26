@@ -54,7 +54,7 @@ Resources:
       ComparisonOperator: "GreaterThanThreshold"
       AlarmDescription: "Alarm when Lambda concurrency exceeds the threshold"
       # AlarmActions:
-      #   - !GetAtt ScaleUpLambdaFunction.Arn
+      #   - !Ref ScaleUpLambdaFunction
       Dimensions:
         - Name: FunctionName
           Value: MyLambdaFunction # Correct reference to the function's name
@@ -108,6 +108,10 @@ Resources:
               - iam:*
               - lambda:*
               - elasticloadbalancing:*
+              - route53:GetHostedZone
+              - route53:ChangeResourceRecordSets
+              - route53:GetChange
+              - route53:*
               Resource: "*"
 
       # Events:
@@ -126,40 +130,76 @@ Resources:
       #           alarmName:
       #             - Ref: HighConcurrencyAlarm
 
-  # LowConcurrencyAlarm:
-  #   Type: "AWS::CloudWatch::Alarm"
-  #   Properties:
-  #     MetricName: ConcurrentExecutions
-  #     Namespace: "AWS/Lambda"
-  #     Statistic: "Sum"
-  #     Period: 60
-  #     EvaluationPeriods: 1
-  #     Threshold: 20 # Set to the appropriate lower concurrency threshold
-  #     ComparisonOperator: "LessThanThreshold"
-  #     AlarmDescription: "Alarm when Lambda concurrency drops below the threshold"
-  #     AlarmActions:
-  #       - !GetAtt ScaleDownLambdaFunction.Arn
-  #     Dimensions:
-  #       - Name: FunctionName
-  #         Value: !Ref MyLambdaFunction
+  LowConcurrencyAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      MetricName: ConcurrentExecutions
+      Namespace: "AWS/Lambda"
+      Statistic: "Sum"
+      Period: 7200
+      EvaluationPeriods: 1
+      Threshold: 20 # Set to the appropriate lower concurrency threshold
+      ComparisonOperator: "LessThanThreshold"
+      AlarmDescription: "Alarm when Lambda concurrency drops below the threshold"
+      # AlarmActions:
+      #   - !Ref ScaleDownLambdaFunction
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref MyLambdaFunction
 
   ScaleDownLambdaFunction:
     Type: "AWS::Serverless::Function"
+    Description: "Lambda function to scale down the concurrency limit (deploy trigger 2)"
     Properties:
-      CodeUri: scale/
       Timeout: 900
+      CodeUri: scale/
       Handler: scale.lambda_scale_down_handler
       Runtime: python3.8
-      Policies: # Add necessary permissions for the Scale Down function
+      Environment:
+        Variables:
+          LAMBDA_FUNCTION_NAME: !GetAtt MyLambdaFunction.Arn
+          STACK_NAME: !Ref AWS::StackName
+      Policies:
         - Version: "2012-10-17"
           Statement:
-            -
+            - 
               Effect: Allow
               Action:
-                - cloudformation:CreateStack
-                - cloudformation:DescribeStacks
-                - cloudformation:UpdateStack
-                - cloudformation:DeleteStack
+              # - cloudformation:CreateStack
+              # - cloudformation:DeleteStack
+              # - cloudformation:DescribeStacks
+              # - cloudformation:UpdateStack
+              # - ec2:CreateInternetGateway
+              # - ec2:CreateVpc
+              # - ec2:DescribeInternetGateways
+              # - ec2:DescribeVpcs
+              # - ec2:ModifyVpcAttribute
+              # - ecs:CreateCluster
+              # - ecs:DeleteCluster
+              # - ecs:DescribeClusters
+              # - ec2:DeleteInternetGateway
+              # - ec2:DeleteVpc
+              # - iam:CreateRole
+              # - iam:DeleteRole
+              # - iam:DeleteRolePolicy
+              # - iam:PutRolePolicy
+              # - lambda:GetAlias
+              # - lambda:GetFunction
+              # - lambda:ListVersionsByFunction
+              # - ec2:CreateSecurityGroup
+              # - ec2:DescribeAvailabilityZones
+              # - elasticloadbalancing:DescribeTargetGroup
+              - cloudformation:*
+              - ec2:*
+              - ecs:*
+              - iam:*
+              - lambda:*
+              - elasticloadbalancing:*
+              - route53:GetHostedZone
+              - route53:ChangeResourceRecordSets
+              - route53:GetChange
+              - route53:*
+              - apigateway:GET 
               Resource: "*"
       # Events:
       #   LowConcurrencyTrigger:
@@ -656,7 +696,21 @@ Resources:
       AliasTarget:
         DNSName: !GetAtt ALB.DNSName
         HostedZoneId: !GetAtt ALB.CanonicalHostedZoneID
-        EvaluateTargetHealth: false
+        EvaluateTargetHealth: true
+      HealthCheckId: !Ref MyHealthCheck
+
+
+  MyHealthCheck:
+    Condition: condWithFargate
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        Type: HTTPS  # Use HTTP or HTTPS based on your application protocol
+        ResourcePath: /  # Adjust the path as needed
+        FullyQualifiedDomainName: !GetAtt ALB.DNSName
+        Port: 443  # Adjust the port based on your application configuration
+        RequestInterval: 30  # Adjust the interval based on your application needs
+        FailureThreshold: 3  # Adjust the threshold based on your application needs
 # Outputs:
 # WebEndpoint:
 #   Description: "API Gateway endpoint URL for Prod stage"

@@ -8,11 +8,11 @@ The cloud offers the allure of limitless scaling. However, the essential ability
 
 ### Exploration of Potential Technologies
 
-We have assessed a range of technologies to fulfill our scaling needs. AWS Lambda and AWS API Gateway shine in scaling from a non-existent base to moderate levels, suiting early development and small deployments. Yet, scaling beyond that to handle very high demand presents challenges. Other services such as AWS EC2, AWS ECS, AWS EKS, AWS Fargate, and AWS App Runner have been considered. Notably, they all do not scale back to zero activity.
+AWS Lambda and AWS API Gateway shine in scaling from a non-existent base to moderate levels, suiting early development and small deployments. Yet, scaling beyond that to handle very high demand presents challenges. Other services such as AWS EC2, AWS ECS, AWS EKS, AWS Fargate, and AWS App Runner may fit that niche. Notably, they all do not scale back to zero.
 
 ### Adoption of AWS Fargate
 
-To overcome this barrier, we elect to implement AWS Fargate for scaling from moderate to peak demand. AWS Fargate is capable of running **the same Docker image** used at the initial AWS Lambda stage, maintaining deployment uniformity.
+Hence, to overcome these issues LambdaFlex combine AWS Lamba and AWS Fargate for scaling from moderate to peak demand. AWS Fargate is capable of running **the same Docker image** used at the initial AWS Lambda stage, maintaining deployment uniformity.
 
 ## Overcoming Challenges
 
@@ -61,6 +61,8 @@ The LambdaFlex methodology effectively merges the simplicity of minimal infrastr
 - **Scaling Time:** AWS Load Balancer and AWS Fargate deployment(s) are not instantaneous, hence scale-up triggers should be set accordingly.
 
 - **Scale-Down Process:** The scale-down process should consider the TTL of the DNS records and include a delay before tearing down AWS Load Balancer and AWS Fargate services.
+
+- **Scale Up/Down Automation:** The scale-up/down process is triggered with AWS Cloudwatch alarms and transition the stack based on configurable thresholds.
 
 ### Underlying Service (FastAPI)
 

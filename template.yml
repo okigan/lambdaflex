@@ -14,13 +14,12 @@ Parameters:
   paramWithFargate:
     Type: String
     Description: "The Route 53 hosted zone ID for the domain name (e.g., Z1ABCDEF123456)"
-    Default: no
-    # AllowedValues:
-    #   - yes
-    #   - no
+    Default: false
+    AllowedValues: [true, false]
+    
 Conditions:
-  condWithFargate: !Equals [!Ref paramWithFargate, "yes"]
-  condWithoutFargate: !Equals [!Ref paramWithFargate, "no"]
+  condWithFargate: !Equals [!Ref paramWithFargate, "true"]
+  condWithoutFargate: !Equals [!Ref paramWithFargate, "false"]
 Globals:
   Function:
     Timeout: 10
@@ -72,6 +71,7 @@ Resources:
       Environment:
         Variables:
           LAMBDA_FUNCTION_NAME: !GetAtt MyLambdaFunction.Arn
+          STACK_NAME: !Ref AWS::StackName
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -195,7 +195,7 @@ Resources:
       DomainName: !Ref paramDomainName
       ValidationMethod: DNS
 
-  MyRoute53RecordSet:
+  MyRoute53RecordSetApiGateway:
     Condition: condWithoutFargate
     Type: AWS::Route53::RecordSet
     Properties:
@@ -644,7 +644,7 @@ Resources:
         HttpCode: "200-499"
       TargetType: ip
 
-  MyRoute53RecordSet2:
+  MyRoute53RecordSetFargate:
     Condition: condWithFargate
     Type: AWS::Route53::RecordSet
     Properties:

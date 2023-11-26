@@ -9,5 +9,5 @@ rollback_on_failure = false
 parameter_overrides = [
     "paramDomainName=lambda-or-anyscale0.cloud.okulist.net",
     "paramHostedZoneId=Z00976901X2BWQNUQ03E3",
-    "paramWithFargate=no",
+    "paramWithFargate=false",
 ]

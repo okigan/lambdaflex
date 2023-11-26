@@ -41,24 +41,56 @@ Resources:
       Dockerfile: Dockerfile
       DockerContext: ./src
       DockerTag: latest
+# 
+
+
+  HighConcurrencySNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: "High Concurrency Alarm SNS Topic"
+      TopicName: "HighConcurrencySNSTopic"
+
+  LowConcurrencySNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: "Low Concurrency Alarm SNS Topic"
+      TopicName: "LowConcurrencySNSTopic"
+
+  # HighConcurrencySNSSubscription:
+  #   Condition: condWithoutFargate
+  #   Type: AWS::SNS::Subscription
+  #   Properties:
+  #     Protocol: "lambda"
+  #     TopicArn: !Ref HighConcurrencySNSTopic
+  #     Endpoint: !GetAtt ScaleUpLambdaFunction.Arn
+
+  # LowConcurrencySNSSubscription:
+  #   Condition: condWithFargate
+  #   Type: AWS::SNS::Subscription
+  #   Properties:
+  #     Protocol: "lambda"
+  #     TopicArn: !Ref LowConcurrencySNSTopic
+  #     Endpoint: !GetAtt ScaleDownLambdaFunction.Arn
+
 
   HighConcurrencyAlarm:
     Type: "AWS::CloudWatch::Alarm"
     Properties:
-      MetricName: ConcurrentExecutions
+      # MetricName: ConcurrentExecutions
+      MetricName: Invocations
       Namespace: "AWS/Lambda"
       Statistic: "Sum"
       Period: 300
       EvaluationPeriods: 1
-      Threshold: 100 # Set to the appropriate concurrency threshold
+      Threshold: 100
       ComparisonOperator: "GreaterThanThreshold"
       AlarmDescription: "Alarm when Lambda concurrency exceeds the threshold"
-      # AlarmActions:
-      #   - !Ref ScaleUpLambdaFunction
+      AlarmActions:
+        - !Ref HighConcurrencySNSTopic
       Dimensions:
         - Name: FunctionName
-          Value: MyLambdaFunction # Correct reference to the function's name
-      TreatMissingData: "notBreaching" # Choose an appropriate option
+          Value: !Ref MyLambdaFunction
+      TreatMissingData: "notBreaching"
 
   ScaleUpLambdaFunction:
     Type: "AWS::Serverless::Function"
@@ -113,6 +145,12 @@ Resources:
               - route53:GetChange
               - route53:*
               Resource: "*"
+      Events:
+        alarm:
+          Type: SNS
+          Properties:
+            Topic: !Ref HighConcurrencySNSTopic
+
 
       # Events:
       #   HighConcurrencyTrigger:
@@ -133,16 +171,17 @@ Resources:
   LowConcurrencyAlarm:
     Type: "AWS::CloudWatch::Alarm"
     Properties:
-      MetricName: ConcurrentExecutions
+      # MetricName: ConcurrentExecutions
+      MetricName: Invocations
       Namespace: "AWS/Lambda"
       Statistic: "Sum"
       Period: 7200
       EvaluationPeriods: 1
-      Threshold: 20 # Set to the appropriate lower concurrency threshold
+      Threshold: 20
       ComparisonOperator: "LessThanThreshold"
       AlarmDescription: "Alarm when Lambda concurrency drops below the threshold"
-      # AlarmActions:
-      #   - !Ref ScaleDownLambdaFunction
+      AlarmActions:
+        - !Ref LowConcurrencySNSTopic
       Dimensions:
         - Name: FunctionName
           Value: !Ref MyLambdaFunction
@@ -201,6 +240,11 @@ Resources:
               - route53:*
               - apigateway:GET 
               Resource: "*"
+      Events:
+        alarm:
+          Type: SNS
+          Properties:
+            Topic: !Ref LowConcurrencySNSTopic
       # Events:
       #   LowConcurrencyTrigger:
       #     Type: CloudWatchEvent

@@ -61,7 +61,23 @@ def scale_up_down(paramWithFargate):
     return {'message': 'Fargate stack deployment initiated'}
 
 def lambda_scale_up_handler(event, context):
-    return scale_up_down('true')
+    logger.info('Starting scale up')
+    logger.info(f'Event: {event}')
+    logger.info(f'Context: {context}')
+
+    result = scale_up_down('true')
+
+    logger.info(f'Result: {result}')
+
+    return result
 
 def lambda_scale_down_handler(event, context):
-    return scale_up_down('false')
+    logger.info('Starting scale up')
+    logger.info(f'Event: {event}')
+    logger.info(f'Context: {context}')
+
+    result = scale_up_down('false')
+
+    logger.info(f'Result: {result}')
+
+    return result

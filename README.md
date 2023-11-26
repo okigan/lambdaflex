@@ -1,31 +1,74 @@
-# Problem Statement
+## Scaling Dilemma
 
-When embarking on projects, a common challenge arises: the dilemma between opting for a minimal setup that lacks scalability or adopting a scalable setup that demands substantial time and resources—needlessly costly for smaller projects. Both choices present inherent issues; starting with a minimal setup necessitates migration as the project scales, while initiating with a scalable setup leads to disproportionate resource consumption when usage is low. Switching costs between the two setups are high, and the lack of a seamless transition between them is a significant pain point.
+When initiating projects, teams often face a critical decision: choosing between a simple setup that may lack future scalability or a more complex, scalable system that can be overkill and costly for initial needs. Opting for simplicity can later make it necessary to overhaul the setup as the project grows, while starting with a scalable solution may result in wasted resources during periods of low utilization. The challenge is compounded by the significant costs associated with transitioning between these two approaches and the absence of a seamless integration between them.
 
-The cloud promises infinite scalability, but the crucial element is to scale appropriately from zero to infinity and **back to zero** remains ellusive. 
+The cloud offers the allure of limitless scaling. However, the essential ability to scale efficiently from zero to peak capacity — and importantly, back down to zero again — continues to be elusive.
 
-# LambdaFlex Approach
+## LambdaFlex Strategy
 
-## Exploring Potential Solutions
+### Exploration of Potential Technologies
 
-Several technologies could potentially meet our requirements. AWS Lambda, coupled with AWS API Gateway, excels at scaling from zero to some scale, making it ideal for prototyping and small scale deployment. However, it encounters challenges when scaling from "some" to "infinity". To address this, we explore alternatives like AWS EC2, AWS ECS, AWS EKS, AWS Fargate, and AWS App Runner, but they do not scale back to zero.
+We have assessed a range of technologies to fulfill our scaling needs. AWS Lambda and AWS API Gateway shine in scaling from a non-existent base to moderate levels, suiting early development and small deployments. Yet, scaling beyond that to handle very high demand presents challenges. Other services such as AWS EC2, AWS ECS, AWS EKS, AWS Fargate, and AWS App Runner have been considered. Notably, they all do not scale back to zero activity.
 
-## Selection of AWS Fargate
+### Adoption of AWS Fargate
 
-Here we'll use AWS Fargate for scaling from "some" to "infinity". AWS Fargate service can *the same Docker image* as used in "zero" to "some" scale in AWS Lambda, ensuring consistency across the deployment.
+To overcome this barrier, we elect to implement AWS Fargate for scaling from moderate to peak demand. AWS Fargate is capable of running **the same Docker image** used at the initial AWS Lambda stage, maintaining deployment uniformity.
 
-# Addressing Complications
+## Overcoming Challenges
 
-To marry the two solutions, we need to address the transition between the two as scale requiments change. At "zero" sacle  AWS Gateway manages routing requests to a dynamic pool of AWS Lambda instances. We need similar funtionality when running on AWS Fargate and a transition between the two. Additionally, AWS Lambda can operate without a Virtual Private Cloud (VPC), whereas AWS Fargate necessitates one.
+Bridging AWS Lambda and AWS Fargate involves addressing how their scaling mechanisms transition. Initially, AWS API Gateway directs traffic to a dynamic set of AWS Lambda functions as demand fluctuates at the lowest scale level. This functionality must be replicated on AWS Fargate, along with managing the transition between services. Furthermore, AWS Lambda can operate independently of a Virtual Private Cloud (VPC), whereas AWS Fargate requires the presence of one.
 
-# Solution Overview
+## Solution Architecture
 
-Transition from "some" scale to "inifinity" unfolds in stages. We start with Route53, AWS Gateway, and AWS Lambda serving requests. As the number of requests escalates, we introduce AWS VPC, AWS Load Balancer, AWS Target Group(s), and AWS Fargate. Finally, we update Route 53 to direct traffic to the AWS Load Balancer backed by AWS Fargate instances/pods. When traffic diminishes, we gracefully teardown AWS Route53 record(s), AWS Fargate and AWS VPC, reverting to AWS Lambda—returning to "some" to "zero" scale.
+The progression from moderate use to peak demand occurs in a phased approach:
 
-# Summary
+1. Initially, AWS Route53, AWS API Gateway, and AWS Lambda are in place to handle incoming requests. 
+2. As demand increases, we integrate AWS VPC, AWS Load Balancer, AWS Target Group(s), and AWS Fargate.
+3. We modify AWS Route53 to redirect traffic to the AWS Load Balancer, now supported by AWS Fargate.
+4. As demand recedes, we systematically dismantle the components — AWS Route53 records, AWS Fargate services, and AWS VPC — transitioning back to the more cost-efficient AWS Lambda at lower scales.
 
-The LambdaFlex approach bridges the gap between minimal setups and highly scalable architectures. By seamlessly transitioning between AWS Lambda and AWS Fargate, it offers a flexible scaling solution tailored to project needs.
+```mermaid
+flowchart TB
+    subgraph "Docker Image"
+        ServiceCode[Service Code]
+    end
 
-# Code Details
+    subgraph " "
+        APIGateway[AWS API Gateway] --> Lambda[AWS Lambda] --> ServiceCode
+    end
 
-This serverless application, deployed on AWS, leverages AWS Lambda and AWS Fargate. Written in Python using the FastAPI framework, the application is containerized with Docker, as evident from the Dockerfile in the `src` directory. The Dockerfile employs the AWS base image for Python 3.8 and installs dependencies specified in the `requirements.txt` file. The entrypoint script dynamically starts the application based on whether it's running in an AWS Lambda environment or as a Fargate container.
+    subgraph "AWS VPC"
+        LoadBalancer --> TargetGroups[AWS Target Groups]
+        TargetGroups --> Fargate[AWS Fargate] --> ServiceCode
+    end
+
+    
+    Route53 -. "Moderate-Peak Traffic" .-> LoadBalancer    
+    Route53 -- "Zero-Moderate Traffic" --> APIGateway
+
+```
+
+## Summary
+
+The LambdaFlex methodology effectively merges the simplicity of minimal infrastructures with the robustness of highly scalable systems. By fluidly shifting between AWS Lambda for low to moderate demand and AWS Fargate for higher intensities, the solution adapts flexibly to changing project requirements.
+
+## Implementation Notes
+
+### Speed of Scale Up/Down
+
+- **Route53 TTL Consideration:** DNS records for AWS API Gateway and AWS Load Balancer are set with TTL of 60 seconds. This implies that changes may take up to 60 seconds to take effect.
+  
+- **Scaling Time:** AWS Load Balancer and AWS Fargate deployment(s) are not instantaneous, hence scale-up triggers should be set accordingly.
+
+- **Scale-Down Process:** The scale-down process should consider the TTL of the DNS records and include a delay before tearing down AWS Load Balancer and AWS Fargate services.
+
+### Underlying Service (FastAPI)
+
+The underlying service is implemented with FastAPI, a robust framework for building APIs and generating OpenAPI specifications. It's versatile and can be utilized as is or replaced with any other framework.
+
+### Bootstrapping Logic
+
+The bootstrapping logic resides in the `entrypoint.sh` file. This script detects the environment and initiates the service accordingly and bridges the transition between AWS Lambda and AWS Fargate.
+
+### Detailed deployment diagram
+![alt text](./doc/deployment.png "application-composer-template")

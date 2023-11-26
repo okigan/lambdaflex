@@ -20,7 +20,7 @@ Parameters:
     #   - no
 Conditions:
   condWithFargate: !Equals [!Ref paramWithFargate, "yes"]
-
+  condWithoutFargate: !Equals [!Ref paramWithFargate, "no"]
 Globals:
   Function:
     Timeout: 10
@@ -196,6 +196,7 @@ Resources:
       ValidationMethod: DNS
 
   MyRoute53RecordSet:
+    Condition: condWithoutFargate
     Type: AWS::Route53::RecordSet
     Properties:
       Name: !Ref paramDomainName
@@ -573,10 +574,11 @@ Resources:
         - ContainerName: "fastapic1"
           ContainerPort: 8080
           # LoadBalancerName: fastapi-alb
-          TargetGroupArn: !GetAtt ALBTargetGroup2.TargetGroupArn
+          TargetGroupArn: !GetAtt ALBTargetGroup.TargetGroupArn
     DependsOn:
       - ALB
-      - ALBListener
+      - ALBListener80
+      - ALBListener443
 
   # ALB section
 
@@ -607,18 +609,31 @@ Resources:
     DependsOn:
       - MyInternetGateway
 
-  ALBListener:
+  ALBListener80:
     Condition: condWithFargate
     Type: "AWS::ElasticLoadBalancingV2::Listener"
     Properties:
       DefaultActions:
         - Type: "forward"
-          TargetGroupArn: !GetAtt ALBTargetGroup2.TargetGroupArn
+          TargetGroupArn: !GetAtt ALBTargetGroup.TargetGroupArn
       LoadBalancerArn: !Ref ALB
       Port: "80"
       Protocol: "HTTP"
 
-  ALBTargetGroup2:
+  ALBListener443:
+    Condition: condWithFargate
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      Certificates:
+        - CertificateArn: !Ref AcmCertificate
+      DefaultActions:
+        - Type: "forward"
+          TargetGroupArn: !GetAtt ALBTargetGroup.TargetGroupArn
+      LoadBalancerArn: !Ref ALB
+      Port: "443"
+      Protocol: "HTTPS"
+
+  ALBTargetGroup:
     Condition: condWithFargate
     Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
     Properties:

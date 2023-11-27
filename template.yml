@@ -74,6 +74,7 @@ Resources:
 
 
   HighConcurrencyAlarm:
+    Condition: condWithoutFargate
     Type: "AWS::CloudWatch::Alarm"
     Properties:
       # MetricName: ConcurrentExecutions
@@ -169,6 +170,7 @@ Resources:
       #             - Ref: HighConcurrencyAlarm
 
   LowConcurrencyAlarm:
+    Condition: condWithFargate
     Type: "AWS::CloudWatch::Alarm"
     Properties:
       # MetricName: ConcurrentExecutions
@@ -185,6 +187,7 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value: !Ref MyLambdaFunction
+      TreatMissingData: "breaching"
 
   ScaleDownLambdaFunction:
     Type: "AWS::Serverless::Function"

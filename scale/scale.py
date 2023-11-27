@@ -36,11 +36,9 @@ def stack_exists(stack_name):
         return 'does not exist' not in str(e)
 
 def scale_up_down(paramWithFargate):
-    CLOUDFORMATION_CLIENT.update_stack(
-        StackName=STACK_NAME,
-        UsePreviousTemplate=True,
-        Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
-        Parameters=[
+    logger.info('Starting scale_up_down')
+
+    parameters = [
             {
                 'ParameterKey': 'paramDomainName',
                 'UsePreviousValue': True
@@ -53,15 +51,27 @@ def scale_up_down(paramWithFargate):
                 'ParameterKey': 'paramWithFargate',
                 'ParameterValue': paramWithFargate
             }
-        ],
+        ]
+    
+    logger.info(f'paramWithFargate: {paramWithFargate}')
+    logger.info(f'Stack name: {STACK_NAME}')
+    logger.info(f'Parameters: {parameters}')
+
+    result = CLOUDFORMATION_CLIENT.update_stack(
+        StackName=STACK_NAME,
+        UsePreviousTemplate=True,
+        Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
+        Parameters=parameters,
     )
+
+    logger.info(f'Result: {result}')
 
 
     # monitor(STACK_NAME, 'CREATE_COMPLETE')
     return {'message': 'Fargate stack deployment initiated'}
 
 def lambda_scale_up_handler(event, context):
-    logger.info('Starting scale up')
+    logger.info('Starting lambda_scale_up_handler')
     logger.info(f'Event: {event}')
     logger.info(f'Context: {context}')
 
@@ -72,7 +82,7 @@ def lambda_scale_up_handler(event, context):
     return result
 
 def lambda_scale_down_handler(event, context):
-    logger.info('Starting scale up')
+    logger.info('Starting lambda_scale_down_handler')
     logger.info(f'Event: {event}')
     logger.info(f'Context: {context}')
 

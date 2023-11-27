@@ -145,6 +145,7 @@ Resources:
               - route53:ChangeResourceRecordSets
               - route53:GetChange
               - route53:*
+              - cloudwatch:*
               Resource: "*"
       Events:
         alarm:
@@ -176,6 +177,7 @@ Resources:
       # MetricName: ConcurrentExecutions
       MetricName: Invocations
       Namespace: "AWS/Lambda"
+      # https://marbot.io/blog/reduce-cloudwatch-alarms-by-combining-metrics-to-reduce-costs-or-improve-auto-scaling.html
       Statistic: "Sum"
       Period: 7200
       EvaluationPeriods: 1
@@ -242,6 +244,7 @@ Resources:
               - route53:GetChange
               - route53:*
               - apigateway:GET 
+              - cloudwatch:*
               Resource: "*"
       Events:
         alarm:

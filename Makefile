@@ -3,9 +3,23 @@ venv:
 	( \
 		. .venv/bin/activate; \
 		pip install --upgrade pip; \
-		pip install -r lambda/requirements.txt; \
+		pip install -r src/requirements.txt; \
 		pip install -r scale/requirements.txt; \
 		pip install -r requirements-dev.txt; \
+	)
+
+run:
+	( \
+		. .venv/bin/activate; \
+		cd ./src; \
+		python ./app.py; \
+	)
+
+test:
+	( \
+		. .venv/bin/activate; \
+		export PYTHONPATH=./src:$$PYTHONPATH; \
+		pytest -v; \
 	)
 
 build:

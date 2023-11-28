@@ -25,7 +25,7 @@ The progression from moderate use to peak demand occurs in a phased approach:
 1. Initially, AWS Route53, AWS API Gateway, and AWS Lambda are deployed to handle incoming requests. 
 2. As demand increases, AWS VPC, AWS Load Balancer, AWS Target Group(s), and AWS Fargate are deployed
 3. AWS Route53 is updated to redirect traffic to the AWS Load Balancer, which is backed by AWS Fargate pods.
-4. As demand recedes, the AWS Route53 records, AWS Fargate services, and AWS VPC are removed and the system is back to more cost-efficient AWS Lambda deployment.
+4. As demand subsides, the AWS Route53 records, AWS Fargate services, and AWS VPC are removed and the system is back to cost-efficient AWS Lambda deployment.
 
 ```mermaid
 flowchart TB
@@ -64,8 +64,7 @@ The LambdaFlex methodology effectively merges the simplicity of minimal infrastr
 - **Scale Up/Down Automation:** The scale-up/down process is triggered with AWS Cloudwatch alarms and transitions the AWS CloudFormation stack based on configurable thresholds.
 
 ### Underlying Service (FastAPI)
-
-The underlying service is implemented with FastAPI, a robust framework for building APIs and generating OpenAPI specifications. It's versatile and can be utilized as is or replaced with any other framework (ex. NodeJS, GO).
+The underlying service is implemented with FastAPI, a robust framework for building APIs and generating OpenAPI specifications. It operates independently from AWS Lambda, AWS Fargate, and Docker (despite Docker's benefits, I prefer avoiding its build time and debugging complexities). FastAPI is versatile and can be utilized as is or replaced with any other framework (ex. NodeJS, GO).
 
 ### Bootstrapping Logic
 

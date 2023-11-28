@@ -1,2 +1,4 @@
 cfn-lint
-pydot 
+pydot
+pytest
+httpx

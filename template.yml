@@ -8,7 +8,7 @@ Parameters:
     Description: "The domain name for the ACM certificate (e.g., your-custom-domain-name.example.com)"
 
   paramHostedZoneId:
-    Type: String
+    Type: AWS::Route53::HostedZone::Id
     Description: "The Route 53 hosted zone ID for the domain name (e.g., Z1ABCDEF123456)"
 
   paramWithFargate:

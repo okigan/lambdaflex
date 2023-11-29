@@ -19,7 +19,7 @@ jobs:
         cache: 'pip' # caching pip dependencies
 
     - name: Install dependencies
-      run: make
+      run: make venv
 
     - name: Run build
       run: make build

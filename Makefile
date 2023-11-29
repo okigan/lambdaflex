@@ -4,8 +4,9 @@ venv:
 		. .venv/bin/activate; \
 		pip install --upgrade pip; \
 		pip install -r services/pet-store/src/requirements.txt; \
-		pip install -r infra/requirements.txt; \
+		pip install -r infra/src/requirements.txt; \
 		pip install -r requirements-dev.txt; \
+		mypy --install-types; \
 	)
 
 run:
@@ -23,7 +24,7 @@ test:
 	)
 	( \
 		. .venv/bin/activate; \
-		cd ./infra; \
+		cd ./infra/; \
 		python -m pytest --verbosity 3; \
 	)
 

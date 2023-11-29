@@ -16,7 +16,17 @@ app = FastAPI(
     root_path='/prod' if 'LAMBDA_TASK_ROOT' in os.environ else '/' 
 )
 
-handler = Mangum(app)
+mangum_handler = Mangum(app)
+
+def handler(event, context):
+    logger.info('Handling event: %s', event)
+    logger.info('Handling context: %s', context)
+
+    result = mangum_handler(event, context)
+
+    logger.info('Handling result: %s', result)
+
+    return result
 
 
 @app.get("/")

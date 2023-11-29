@@ -1,5 +1,5 @@
 # Define the base image from the AWS base image for Python
-FROM public.ecr.aws/lambda/python:3.8
+FROM public.ecr.aws/lambda/python:3.11
 
 # Copy the requirements.txt and install dependencies
 COPY requirements.txt .

@@ -3,27 +3,32 @@ venv:
 	( \
 		. .venv/bin/activate; \
 		pip install --upgrade pip; \
-		pip install -r src/requirements.txt; \
-		pip install -r scale/requirements.txt; \
+		pip install -r services/pet-store/src/requirements.txt; \
+		pip install -r infra/requirements.txt; \
 		pip install -r requirements-dev.txt; \
+		mypy --install-types; \
 	)
 
 run:
 	( \
 		. .venv/bin/activate; \
-		cd ./src; \
+		cd ./services/pet-store/src; \
 		python ./app.py; \
 	)
 
 test:
 	( \
 		. .venv/bin/activate; \
-		export PYTHONPATH=./src:$$PYTHONPATH; \
-		pytest -v; \
+		cd ./services/pet-store/; \
+		python -m pytest --verbosity 3; \
 	)
 
 build:
-	sam build && sam validate --region us-east-1 --lint
+	( \
+		. .venv/bin/activate; \
+		export SAM_CLI_TELEMETRY=0; \
+		sam build -u -c  --debug && sam validate --region us-east-1 --lint; \
+	)
 
 package:
 	sam package --resolve-s3 --output-template-file packaged.yaml --s3-bucket sam-artifacts-xxxx
@@ -42,7 +47,7 @@ scale-up:
 
 docker-build:
 	( \
-	cd src; \
+	cd services/pet-store/src; \
 	docker build -t xx .; \
 	)
 

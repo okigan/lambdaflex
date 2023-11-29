@@ -2,3 +2,4 @@ cfn-lint
 pydot
 pytest
 httpx
+aws-sam-cli

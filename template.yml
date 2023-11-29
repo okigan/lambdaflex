@@ -39,7 +39,7 @@ Resources:
             RestApiId: !Ref MyServerlessApi
     Metadata:
       Dockerfile: Dockerfile
-      DockerContext: ./src
+      DockerContext: ./services/pet-store/src
       DockerTag: latest
 # 
 
@@ -98,9 +98,9 @@ Resources:
     Description: "Lambda function to scale up the concurrency limit (deploy trigger 2)"
     Properties:
       Timeout: 900
-      CodeUri: scale/
+      CodeUri: infra/src
       Handler: scale.lambda_scale_up_handler
-      Runtime: python3.8
+      Runtime: python3.11
       Environment:
         Variables:
           LAMBDA_FUNCTION_NAME: !GetAtt MyLambdaFunction.Arn
@@ -196,9 +196,9 @@ Resources:
     Description: "Lambda function to scale down the concurrency limit (deploy trigger 2)"
     Properties:
       Timeout: 900
-      CodeUri: scale/
+      CodeUri: infra/src
       Handler: scale.lambda_scale_down_handler
-      Runtime: python3.8
+      Runtime: python3.11
       Environment:
         Variables:
           LAMBDA_FUNCTION_NAME: !GetAtt MyLambdaFunction.Arn
@@ -588,7 +588,7 @@ Resources:
 
       Handler: "index.lambda_handler"
       Role: !GetAtt LambdaExecutionRole.Arn
-      Runtime: python3.8
+      Runtime: python3.11
       Timeout: 30
 
   LambdaImageUriCustomResource:

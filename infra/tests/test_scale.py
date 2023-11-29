@@ -1,4 +1,4 @@
-from scale.scale import stack_exists
+from ..src.scale import stack_exists
 
 def test_stack_exists():
     # Replace 'my-stack' with the name of a stack that exists

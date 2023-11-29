@@ -38,7 +38,7 @@ package:
 	sam package --resolve-s3 --output-template-file packaged.yaml --s3-bucket sam-artifacts-xxxx
 
 deploy:
-	sam deploy  --config-env dev --resolve-image-repos --disable-rollback 
+	SAM_CLI_TELEMETRY=0 sam deploy  --config-env dev --resolve-image-repos --disable-rollback 
 
 delete:
 	sam delete  --config-env dev 

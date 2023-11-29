@@ -3,7 +3,7 @@ FROM public.ecr.aws/lambda/python:3.11
 
 # Copy the requirements.txt and install dependencies
 COPY requirements.txt .
-RUN python -m pip install -r requirements.txt
+RUN pip install --upgrade pip && python -m pip install -r requirements.txt
 
 # Copy the handler function and any other necessary files
 COPY app.py .

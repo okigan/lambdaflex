@@ -761,7 +761,8 @@ Resources:
         Port: 443  # Adjust the port based on your application configuration
         RequestInterval: 30  # Adjust the interval based on your application needs
         FailureThreshold: 3  # Adjust the threshold based on your application needs
-# Outputs:
+
+Outputs:
 # WebEndpoint:
 #   Description: "API Gateway endpoint URL for Prod stage"
 #   Value: !Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
@@ -770,3 +771,7 @@ Resources:
 #   Description: "The CloudWatch metric for concurrent Lambda executions"
 #   Value: !GetAtt HighConcurrencyAlarm.MetricName
 
+# add output of the route 53 record
+  domainName:
+    Description: "Route 53 record set for the API Gateway"
+    Value: !Ref paramDomainName

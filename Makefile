@@ -22,6 +22,11 @@ test:
 		cd ./services/pet-store/; \
 		python -m pytest --verbosity 3; \
 	)
+	( \
+		. .venv/bin/activate; \
+		cd ./infra; \
+		python -m pytest --verbosity 3; \
+	)
 
 build:
 	( \

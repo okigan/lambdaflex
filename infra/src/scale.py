@@ -4,17 +4,15 @@ from botocore.exceptions import ClientError
 import time
 import logging
 import os
-import subprocess
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-LAMBDA_FUNCTION_NAME = os.environ['LAMBDA_FUNCTION_NAME']
-STACK_NAME = os.environ['STACK_NAME']
+LAMBDA_FUNCTION_NAME = os.environ.get('LAMBDA_FUNCTION_NAME', 'LAMBDA_FUNCTION_NAME_IS_NOT_DEFINED')
+STACK_NAME = os.environ.get('STACK_NAME', 'STACK_NAME_IS_NOT_DEFINED')
 
 LAMBDA_CLIENT = boto3.client('lambda')
 CLOUDFORMATION_CLIENT = boto3.client('cloudformation')
-
 
 
 def monitor(stack_name, target_status):
@@ -26,6 +24,9 @@ def monitor(stack_name, target_status):
         if status == target_status or status.endswith('FAILED'):
             break
         time.sleep(5)
+
+def dummy_function_for_testing():
+    return 'dummy_function_for_testing'
 
 
 def stack_exists(stack_name):

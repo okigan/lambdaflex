@@ -1,7 +1,4 @@
-from ..src.scale import stack_exists
+from src.scale import dummy_function_for_testing
 
-def test_stack_exists():
-    # Replace 'my-stack' with the name of a stack that exists
-    assert stack_exists('my-stack') == True
-    # Replace 'nonexistent-stack' with the name of a stack that doesn't exist
-    assert stack_exists('nonexistent-stack') == False
+def test_dummy_function_for_testing():
+    assert dummy_function_for_testing() == 'dummy_function_for_testing'

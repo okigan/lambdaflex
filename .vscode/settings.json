@@ -1,6 +1,7 @@
 {
     "python.testing.pytestArgs": [
-        "services/pet-store/tests"
+        "services/pet-store/tests",
+        "infra/tests"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true

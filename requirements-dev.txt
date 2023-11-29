@@ -3,3 +3,4 @@ pydot
 pytest
 httpx
 aws-sam-cli
+mypy

@@ -34,6 +34,12 @@ Resources:
         MyApi:
           Type: Api
           Properties:
+            Path: /
+            Method: ANY
+            RestApiId: !Ref MyServerlessApi
+        MyApiProxy:
+          Type: Api
+          Properties:
             Path: /{proxy+}
             Method: ANY
             RestApiId: !Ref MyServerlessApi

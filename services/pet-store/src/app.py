@@ -13,7 +13,7 @@ logger.info('Loading function........')
 
 
 app = FastAPI(
-    root_path='/prod' if 'LAMBDA_TASK_ROOT' in os.environ else '/' 
+    # root_path='/prod' if 'LAMBDA_TASK_ROOT' in os.environ else '/' 
 )
 
 mangum_handler = Mangum(app)

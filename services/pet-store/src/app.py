@@ -6,6 +6,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from mangum import Mangum
 
+import boto3
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -30,8 +32,24 @@ def handler(event, context):
 
 
 @app.get("/")
-def read_root():
+def get_root():
     return {"Hello": "World"}
+
+STACK_NAME = os.environ.get('STACK_NAME', 'STACK_NAME_IS_NOT_DEFINED')
+
+CLOUDFORMATION_CLIENT = boto3.client('cloudformation')
+
+@app.get("/stack-status")
+def get_stack_status():
+    logger.info('Starting get_stack_status')
+    logger.info(f'Stack name: {STACK_NAME}')
+
+    stacks = CLOUDFORMATION_CLIENT.describe_stacks(StackName=STACK_NAME)
+    status = stacks['Stacks'][0]['StackStatus']
+    logger.info(f'Stack status: {status}')
+
+    return {"status": status}
+
 
 class Pet(BaseModel):
     id: int

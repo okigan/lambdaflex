@@ -30,6 +30,14 @@ Resources:
     Description: "Lambda function to scale up the concurrency limit (deploy trigger 1)"
     Properties:
       PackageType: Image
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - 
+              Effect: Allow
+              Action:
+                - cloudformation:DescribeStacks
+              Resource: "*"
       Events:
         MyApi:
           Type: Api

@@ -72,3 +72,9 @@ The bootstrapping logic resides in the `entrypoint.sh` file. This script evaluat
 
 ### Detailed deployment diagram
 ![alt text](./doc/deployment.png "application-composer-template")
+
+### OpenAPI Specification
+* https://lambda-or-anyscale0.cloud.okulist.net/docs
+* https://lambda-or-anyscale0.cloud.okulist.net/stack-status
+
+![alt text](./doc/openapi.png "openapi")

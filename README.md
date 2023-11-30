@@ -73,8 +73,45 @@ The bootstrapping logic resides in the `entrypoint.sh` file. This script evaluat
 ### Detailed deployment diagram
 ![alt text](./doc/deployment.png "application-composer-template")
 
-### OpenAPI Specification
-* https://lambda-or-anyscale0.cloud.okulist.net/docs
+### Demo and OpenAPI Specification
 * https://lambda-or-anyscale0.cloud.okulist.net/stack-status
 
+Try some of these endpoints and see the stack scale up and down
+* https://lambda-or-anyscale0.cloud.okulist.net/docs
+
 ![alt text](./doc/openapi.png "openapi")
+
+
+```mermaid
+graph TD
+    Lambda --> |Scale Up| Fargate
+    Fargate -->|Scale Down| Lambda
+%%  Start --> Lambda 
+%%  Start --> Fargate
+
+%%  Lambda 
+%%    --> |High Concurrency Alarm| C{High \nConcurrency}
+%%    --> |Scale Up| Fargate
+
+%%  Fargate
+%%    --> |Low Concurrency Alarm| D{Low \nConcurrency}
+%%    --> |Scale Down| Fargate
+    
+
+
+%%   A[Start] -->|Deploy| B[Deployed]
+%%   B -->|High Concurrency Alarm| C{High Concurrency Alarm State}
+%%   C -->|ALARM| D[Scale Up]
+%%   C -->|OK| E[Normal Operation]
+%%   C -->|INSUFFICIENT_DATA| F[No Data]
+%%   D -->|Scale Up Complete| E
+%%   D -->|Scale Up Failed| G[Scale Up Failed]
+%%   E -->|Low Concurrency Alarm| H{Low Concurrency Alarm State}
+%%   H -->|ALARM| I[Scale Down]
+%%   H -->|OK| E
+%%   H -->|INSUFFICIENT_DATA| F
+%%   I -->|Scale Down Complete| E
+%%   I -->|Scale Down Failed| J[Scale Down Failed]
+%%   G -->|Retry Scale Up| D
+%%   J -->|Retry Scale Down| I
+```

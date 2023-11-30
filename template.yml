@@ -681,7 +681,7 @@ Resources:
           TargetGroupArn: !GetAtt ALBTargetGroup.TargetGroupArn
     DependsOn:
       - ALB
-      - ALBListener80
+      # - ALBListener80
       - ALBListener443
 
   # ALB section
@@ -713,16 +713,16 @@ Resources:
     DependsOn:
       - MyInternetGateway
 
-  ALBListener80:
-    Condition: condWithFargate
-    Type: "AWS::ElasticLoadBalancingV2::Listener"
-    Properties:
-      DefaultActions:
-        - Type: "forward"
-          TargetGroupArn: !GetAtt ALBTargetGroup.TargetGroupArn
-      LoadBalancerArn: !Ref ALB
-      Port: "80"
-      Protocol: "HTTP"
+  # ALBListener80:
+  #   Condition: condWithFargate
+  #   Type: "AWS::ElasticLoadBalancingV2::Listener"
+  #   Properties:
+  #     DefaultActions:
+  #       - Type: "forward"
+  #         TargetGroupArn: !GetAtt ALBTargetGroup.TargetGroupArn
+  #     LoadBalancerArn: !Ref ALB
+  #     Port: "80"
+  #     Protocol: "HTTP"
 
   ALBListener443:
     Condition: condWithFargate

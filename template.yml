@@ -38,6 +38,9 @@ Resources:
               Action:
                 - cloudformation:DescribeStacks
               Resource: "*"
+      Environment:
+        Variables:
+          STACK_NAME: !Ref AWS::StackName
       Events:
         MyApi:
           Type: Api
@@ -625,6 +628,9 @@ Resources:
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
         - Name: "fastapic1"
+          Environment:
+            - Name: "AWS_STACK_NAME"
+              Value: !Ref AWS::StackName
           Image: !GetAtt LambdaImageUriCustomResource.ImageUri
           PortMappings:
             - 
